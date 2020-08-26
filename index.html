@@ -1,0 +1,29 @@
+<html>
+
+<body>
+<h1>Raw</h1>
+<textarea id="raw"></textarea>
+
+<h1>Formatted</h1>
+
+<pre id="formatted">
+
+</pre>
+
+</body>
+
+<script>
+document.getElementById('raw').addEventListener("input", (evt) => {
+  let x = evt.srcElement.value;
+  x = x.replace(/\/\/.*/gi, '');
+  x = x.replace(/\/\*.+\*\//gi, '');
+  x = x.replace(/#.*/gi, '');
+  x = x.replace(/,/gi, '');
+  x = x.replace(/\s+/gi, '');
+  x = x.replace(/0x/gi, '\\x');
+  x = x.toLowerCase();
+  document.getElementById('formatted').innerText = `MOUSE_DESCRIPTOR="\\\n${x}\\\n"`;
+});
+</script>
+
+</html>
