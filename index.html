@@ -13,16 +13,73 @@
 </body>
 
 <script>
+function normalizeComments(x) {
+  var y = x;
+  y = y.replace(/\/\//gi, '#');
+  y = y.replace(/\/\*/gi, '#');
+  return y;
+}
+
+function stripLeadingWhitespace(x) {
+  var y = x;
+  x = x.replace(/^\s+/gmi, '');
+  return x;
+}
+
+function parseLine(line) {
+  const parsed = {
+    hexVals: [],
+    comment: '',
+  }
+  if (line.startsWith('#')) {
+    parsed.comment = line;
+    return parsed;
+  }
+
+  const lineParts = line.split('#');
+  if (lineParts.length > 1) {
+    parsed.comment = '# ' + lineParts[1].trim();
+    if (lineParts[0] === '') {
+      return parsed;
+    }
+  }
+
+  for (const part of lineParts[0].trim().split(',')) {
+    const trimmed = part.trim();
+    if (trimmed === "") {
+      continue
+    } else if (trimmed.startsWith('0x')) {
+      parsed.hexVals.push(trimmed.replace('0x', '\\\\x'));
+    } else {
+      console.log(lineParts[0]);
+      console.log(`unexpected line part: [${trimmed}]`);
+    }
+  }
+  return parsed;
+}
+
+function formatLine(parsed) {
+  if (parsed.hexVals.length === 0) {
+    return parsed.comment;
+  }
+  var line = 'echo -ne ' + parsed.hexVals.join('') + ' >> "$D"';
+  if (parsed.comment) {
+    line += ' ' + parsed.comment;
+  }
+  return line;
+}
+
 document.getElementById('raw').addEventListener("input", (evt) => {
   let x = evt.srcElement.value;
-  x = x.replace(/\/\/.*/gi, '');
-  x = x.replace(/\/\*.+\*\//gi, '');
-  x = x.replace(/#.*/gi, '');
-  x = x.replace(/,/gi, '');
-  x = x.replace(/\s+/gi, '');
-  x = x.replace(/0x/gi, '\\x');
-  x = x.toLowerCase();
-  document.getElementById('formatted').innerText = `MOUSE_DESCRIPTOR="\\\n${x}\\\n"`;
+  x = stripLeadingWhitespace(normalizeComments(x));
+  var lines = x.split(/\r?\n/);
+  var formatted = '';
+  for (const line of lines) {
+    const parsed = parseLine(line);
+    formatted += formatLine(parsed);
+    formatted += '\r\n';
+  }
+  document.getElementById('formatted').innerText = formatted;
 });
 </script>
 
