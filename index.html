@@ -17,6 +17,7 @@ function normalizeComments(x) {
   var y = x;
   y = y.replace(/\/\//gi, '#');
   y = y.replace(/\/\*/gi, '#');
+  y = y.replace(/\*\//gi, '');
   return y;
 }
 
@@ -26,7 +27,7 @@ function stripLeadingWhitespace(x) {
   return x;
 }
 
-function parseLine(line) {
+function parseLineOld(line) {
   const parsed = {
     hexVals: [],
     comment: '',
@@ -58,11 +59,22 @@ function parseLine(line) {
   return parsed;
 }
 
+function parseLine(line) {
+  const parsed = {
+    hexVals: [],
+    comment: '',
+  }
+  for (const x of line.matchAll(/[0-9A-F]{2}/gi)) {
+    parsed.hexVals.push(x[0]);
+  }
+  return parsed;
+}
+
 function formatLine(parsed) {
   if (parsed.hexVals.length === 0) {
     return parsed.comment;
   }
-  var line = 'echo -ne ' + parsed.hexVals.join('') + ' >> "$D"';
+  var line = 'echo -ne \\\\x' + parsed.hexVals.join('\\\\x') + ' >> "$D"';
   if (parsed.comment) {
     line += ' ' + parsed.comment;
   }
@@ -76,6 +88,9 @@ document.getElementById('raw').addEventListener("input", (evt) => {
   var formatted = '';
   for (const line of lines) {
     const parsed = parseLine(line);
+    if (!parsed) {
+      continue;
+    }
     formatted += formatLine(parsed);
     formatted += '\r\n';
   }
