@@ -27,74 +27,41 @@ function stripLeadingWhitespace(x) {
   return x;
 }
 
-function parseLineOld(line) {
-  const parsed = {
-    hexVals: [],
-    comment: '',
-  }
-  if (line.startsWith('#')) {
-    parsed.comment = line;
-    return parsed;
-  }
-
-  const lineParts = line.split('#');
-  if (lineParts.length > 1) {
-    parsed.comment = '# ' + lineParts[1].trim();
-    if (lineParts[0] === '') {
-      return parsed;
-    }
-  }
-
-  for (const part of lineParts[0].trim().split(',')) {
-    const trimmed = part.trim();
-    if (trimmed === "") {
-      continue
-    } else if (trimmed.startsWith('0x')) {
-      parsed.hexVals.push(trimmed.replace('0x', '\\\\x'));
-    } else {
-      console.log(lineParts[0]);
-      console.log(`unexpected line part: [${trimmed}]`);
-    }
-  }
-  return parsed;
-}
-
 function parseLine(line) {
-  const parsed = {
-    hexVals: [],
-    comment: '',
+  const fixed = line.replace(/#.*$/gi, '').replace(/\/.*$/gi);
+  const hexVals = [];
+  for (const x of fixed.matchAll(/[0-9A-F]{2}/gi)) {
+    hexVals.push(x[0]);
   }
-  for (const x of line.matchAll(/[0-9A-F]{2}/gi)) {
-    parsed.hexVals.push(x[0]);
-  }
-  return parsed;
+  return hexVals;
 }
 
-function formatLine(parsed) {
-  if (parsed.hexVals.length === 0) {
-    return parsed.comment;
+function formatEcho(hexVals) {
+  return '  echo -ne \\\\x' + hexVals.join('\\\\x');
+}
+
+function formatHexVals(hexVals) {
+  const valsPerLine = 20;
+  var formatted = '{\r\n';
+  for (let i = 0; i < hexVals.length / valsPerLine; i++) {
+    const start = i * valsPerLine;
+    const end = Math.min(start + valsPerLine, hexVals.length);
+    formatted += formatEcho(hexVals.slice(start, end));
+    formatted += '\r\n';
   }
-  var line = 'echo -ne \\\\x' + parsed.hexVals.join('\\\\x') + ' >> "$D"';
-  if (parsed.comment) {
-    line += ' ' + parsed.comment;
-  }
-  return line;
+  formatted += '} >> "$D"';
+  return formatted;
 }
 
 document.getElementById('raw').addEventListener("input", (evt) => {
   let x = evt.srcElement.value;
   x = stripLeadingWhitespace(normalizeComments(x));
   var lines = x.split(/\r?\n/);
-  var formatted = '';
+  var hexVals = [];
   for (const line of lines) {
-    const parsed = parseLine(line);
-    if (!parsed) {
-      continue;
-    }
-    formatted += formatLine(parsed);
-    formatted += '\r\n';
+    hexVals.push(...parseLine(line));
   }
-  document.getElementById('formatted').innerText = formatted;
+  document.getElementById('formatted').innerText = formatHexVals(hexVals);
 });
 </script>
 
